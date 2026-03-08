@@ -58,6 +58,13 @@ async function crawlAndConvert(url: string) {
         'noscript', 
         'iframe', 
         'svg',
+        'img',
+        'video',
+        'audio',
+        'canvas',
+        'map',
+        'object',
+        'embed',
         // 可以根据需要添加更多干扰元素，如广告位等
       ];
       
