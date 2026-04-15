@@ -22,6 +22,10 @@
   --shadow-glow: 0 18px 80px rgba(0, 0, 0, 0.28);
   --accent-rgb: 240, 169, 79;
   --highlight-rgb: 123, 92, 255;
+  --shell-surface: rgba(10, 16, 28, 0.72);
+  --shell-surface-strong: linear-gradient(180deg, rgba(12, 19, 34, 0.95), rgba(10, 14, 27, 0.78));
+  --shell-chip-bg: rgba(255, 255, 255, 0.03);
+  --shell-chip-hover: rgba(255, 255, 255, 0.06);
   --body-background:
     radial-gradient(circle at top left, rgba(240, 169, 79, 0.12), transparent 24%),
     radial-gradient(circle at 100% 0%, rgba(111, 73, 255, 0.1), transparent 20%),
@@ -49,6 +53,10 @@
   --accent-rgb: 199, 136, 55;
   --highlight-rgb: 80, 135, 255;
   --shadow-glow: 0 20px 70px rgba(26, 39, 67, 0.12);
+  --shell-surface: rgba(255, 255, 255, 0.76);
+  --shell-surface-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 242, 235, 0.92));
+  --shell-chip-bg: rgba(24, 34, 54, 0.04);
+  --shell-chip-hover: rgba(24, 34, 54, 0.08);
   --body-background:
     radial-gradient(circle at top left, rgba(239, 178, 95, 0.18), transparent 24%),
     radial-gradient(circle at 100% 0%, rgba(80, 135, 255, 0.12), transparent 24%),
@@ -76,6 +84,10 @@
   --accent-rgb: 58, 227, 200;
   --highlight-rgb: 108, 92, 255;
   --shadow-glow: 0 24px 90px rgba(3, 10, 20, 0.42);
+  --shell-surface: rgba(10, 20, 39, 0.76);
+  --shell-surface-strong: linear-gradient(180deg, rgba(12, 24, 46, 0.96), rgba(10, 20, 39, 0.82));
+  --shell-chip-bg: rgba(255, 255, 255, 0.03);
+  --shell-chip-hover: rgba(255, 255, 255, 0.06);
   --body-background:
     radial-gradient(circle at top left, rgba(58, 227, 200, 0.16), transparent 24%),
     radial-gradient(circle at 100% 0%, rgba(108, 92, 255, 0.14), transparent 20%),
@@ -134,5 +146,5 @@ a {
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(246, 239, 228, 0.34);
+  color: var(--text-soft);
 }

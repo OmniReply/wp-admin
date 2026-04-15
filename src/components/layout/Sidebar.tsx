@@ -43,7 +43,7 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden w-80 shrink-0 p-5 lg:block">
-      <div className="sticky top-5 overflow-hidden rounded-[28px] border border-[var(--border-soft)] bg-[linear-gradient(180deg,rgba(12,19,34,0.95),rgba(10,14,27,0.78))] shadow-[0_20px_80px_rgba(0,0,0,0.28)] backdrop-blur">
+      <div className="sticky top-5 overflow-hidden rounded-[28px] border border-[var(--border-soft)] bg-[var(--shell-surface-strong)] shadow-[0_20px_80px_rgba(0,0,0,0.28)] backdrop-blur">
         <div className="border-b border-[var(--border-soft)] px-6 py-6">
           <div className="mb-4 inline-flex rounded-full border border-[rgba(var(--accent-rgb),0.3)] bg-[rgba(var(--accent-rgb),0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--accent-strong)]">
             Control Room
@@ -63,7 +63,7 @@ export default function Sidebar() {
             >
               <button
                 className={`flex items-center justify-between rounded-2xl px-3 py-2 text-left transition ${
-                  currentGroupTitle === group.title ? 'bg-white/[0.04]' : 'hover:bg-white/[0.04]'
+                  currentGroupTitle === group.title ? 'bg-[var(--shell-chip-bg)]' : 'hover:bg-[var(--shell-chip-bg)]'
                 }`}
                 onClick={() => toggleGroup(group.title)}
                 type="button"
@@ -108,7 +108,7 @@ export default function Sidebar() {
                         'group relative overflow-hidden rounded-2xl px-4 py-3 text-sm transition',
                         isActive
                           ? 'bg-[linear-gradient(135deg,rgba(var(--accent-rgb),0.24),rgba(var(--accent-rgb),0.1))] text-[var(--text-main)] shadow-[inset_0_0_0_1px_rgba(var(--accent-rgb),0.2)]'
-                          : 'text-[var(--text-muted)] hover:bg-white/[0.045] hover:text-[var(--text-main)]',
+                          : 'text-[var(--text-muted)] hover:bg-[var(--shell-chip-bg)] hover:text-[var(--text-main)]',
                       ].join(' ')
                     }
                     to={item.path}

@@ -111,6 +111,7 @@ export function ResourceTablePage({ meta, api, useStore, CreateModal, EditModal 
   const loading = useStore((state: AnyRecord) => state.loading as boolean);
   const params = useStore((state: AnyRecord) => state.params as AnyRecord);
   const setParams = useStore((state: AnyRecord) => state.setParams as (patch: AnyRecord) => void);
+  const resetParams = useStore((state: AnyRecord) => state.resetParams as () => void);
   const fetchList = useStore((state: AnyRecord) => state.fetchList as () => Promise<void>);
   const removeItem = useStore((state: AnyRecord) => state.removeItem as (id: string | number) => Promise<void>);
 
@@ -123,10 +124,14 @@ export function ResourceTablePage({ meta, api, useStore, CreateModal, EditModal 
   const currentPage = Number(params[pageKey] ?? 1);
   const currentPageSize = Number(params[pageSizeKey] ?? 20);
   const totalPages = Math.max(1, Math.ceil(total / Math.max(currentPageSize, 1)));
+  const filterFormKey = useMemo(
+    () => JSON.stringify(meta.filters.map((filter) => [filter.name, String(filterValues[filter.name] ?? '')])),
+    [filterValues, meta.filters]
+  );
 
   useEffect(() => {
     void fetchList();
-  }, [fetchList, params.page, params.pageNum, params.pageSize, params.keyword]);
+  }, [fetchList, params]);
 
   const handleSearch = (event: FormSubmitEvent) => {
     event.preventDefault();
@@ -178,7 +183,11 @@ export function ResourceTablePage({ meta, api, useStore, CreateModal, EditModal 
       </CardHeader>
       <CardContent className="grid gap-4">
         {meta.filters.length ? (
-          <form className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 rounded-[28px] border border-white/8 bg-white/[0.035] p-4" onSubmit={handleSearch}>
+          <form
+            key={filterFormKey}
+            className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 rounded-[28px] border border-white/8 bg-white/[0.035] p-4"
+            onSubmit={handleSearch}
+          >
             {meta.filters.map((filter) => (
               <div className="grid gap-1" key={filter.name}>
                 <label className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--text-soft)]">
@@ -209,13 +218,13 @@ export function ResourceTablePage({ meta, api, useStore, CreateModal, EditModal 
                 )}
               </div>
             ))}
-            <div className="flex items-end gap-2">
+            <div className="col-span-full flex flex-wrap items-end gap-2 pt-1">
               <Button type="submit">查询</Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setParams({ [pageKey]: 1, [pageSizeKey]: currentPageSize });
+                  resetParams();
                 }}
               >
                 重置

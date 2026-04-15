@@ -17,20 +17,20 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between px-5 pt-5 lg:px-8">
-      <div className="flex min-h-[78px] flex-1 items-center justify-between rounded-[26px] border border-[var(--border-soft)] bg-[rgba(10,16,28,0.72)] px-6 shadow-[0_14px_60px_rgba(0,0,0,0.2)] backdrop-blur">
+      <div className="flex min-h-[78px] flex-1 items-center justify-between rounded-[26px] border border-[var(--border-soft)] bg-[var(--shell-surface)] px-6 shadow-[0_14px_60px_rgba(0,0,0,0.2)] backdrop-blur">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--text-soft)]">Workspace</p>
           <p className="mt-2 font-['Fraunces'] text-xl font-semibold text-[var(--text-main)]">{breadcrumb}</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden items-center gap-2 rounded-full border border-[var(--border-soft)] bg-white/[0.03] p-1.5 xl:flex">
+          <div className="hidden items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--shell-chip-bg)] p-1.5 xl:flex">
             {options.map((option) => (
               <button
                 key={option.key}
                 className={`rounded-full px-3 py-2 text-left text-[11px] font-semibold transition ${
                   theme === option.key
                     ? 'bg-[linear-gradient(135deg,var(--accent),var(--accent-strong))] text-slate-950 shadow-[0_10px_24px_rgba(var(--accent-rgb),0.28)]'
-                    : 'text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-main)]'
+                    : 'text-[var(--text-muted)] hover:bg-[var(--shell-chip-hover)] hover:text-[var(--text-main)]'
                 }`}
                 onClick={() => setTheme(option.key)}
                 type="button"
@@ -39,7 +39,7 @@ export default function Header() {
               </button>
             ))}
           </div>
-          <div className="hidden rounded-full border border-[var(--border-soft)] bg-white/[0.03] px-4 py-2 text-right sm:block">
+          <div className="hidden rounded-full border border-[var(--border-soft)] bg-[var(--shell-chip-bg)] px-4 py-2 text-right sm:block">
             <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-soft)]">Online</p>
             <p className="mt-1 text-sm font-semibold text-[var(--text-main)]">{String(user?.username ?? user?.nickname ?? '管理员')}</p>
           </div>

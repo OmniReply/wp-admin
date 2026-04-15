@@ -15,6 +15,7 @@ export interface ResourceStoreState<TItem, TParams extends object> {
   loading: boolean;
   params: TParams;
   setParams: (patch: Partial<TParams>) => void;
+  resetParams: () => void;
   fetchList: () => Promise<void>;
   removeItem: (id: string | number) => Promise<void>;
   reset: () => void;
@@ -30,6 +31,7 @@ export function createResourceStore<TItem, TParams extends object>(
     loading: false,
     params: initialParams,
     setParams: (patch) => set((state) => ({ params: { ...state.params, ...patch } })),
+    resetParams: () => set({ params: initialParams }),
     fetchList: async () => {
       if (!api.list) return;
       set({ loading: true });

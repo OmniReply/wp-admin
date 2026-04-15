@@ -998,6 +998,7 @@ def render_create_resource_store() -> str:
           loading: boolean;
           params: TParams;
           setParams: (patch: Partial<TParams>) => void;
+          resetParams: () => void;
           fetchList: () => Promise<void>;
           removeItem: (id: string | number) => Promise<void>;
           reset: () => void;
@@ -1013,6 +1014,7 @@ def render_create_resource_store() -> str:
             loading: false,
             params: initialParams,
             setParams: (patch) => set((state) => ({ params: { ...state.params, ...patch } })),
+            resetParams: () => set({ params: initialParams }),
             fetchList: async () => {
               if (!api.list) return;
               set({ loading: true });
@@ -1711,6 +1713,7 @@ def render_resource_components() -> dict[str, str]:
               const loading = useStore((state: AnyRecord) => state.loading as boolean);
               const params = useStore((state: AnyRecord) => state.params as AnyRecord);
               const setParams = useStore((state: AnyRecord) => state.setParams as (patch: AnyRecord) => void);
+              const resetParams = useStore((state: AnyRecord) => state.resetParams as () => void);
               const fetchList = useStore((state: AnyRecord) => state.fetchList as () => Promise<void>);
               const removeItem = useStore((state: AnyRecord) => state.removeItem as (id: string | number) => Promise<void>);
 
@@ -1723,10 +1726,14 @@ def render_resource_components() -> dict[str, str]:
               const currentPage = Number(params[pageKey] ?? 1);
               const currentPageSize = Number(params[pageSizeKey] ?? 20);
               const totalPages = Math.max(1, Math.ceil(total / Math.max(currentPageSize, 1)));
+              const filterFormKey = useMemo(
+                () => JSON.stringify(meta.filters.map((filter) => [filter.name, String(filterValues[filter.name] ?? '')])),
+                [filterValues, meta.filters]
+              );
 
               useEffect(() => {
                 void fetchList();
-              }, [fetchList, params.page, params.pageNum, params.pageSize, params.keyword]);
+              }, [fetchList, params]);
 
               const handleSearch = (event: FormSubmitEvent) => {
                 event.preventDefault();
@@ -1774,7 +1781,11 @@ def render_resource_components() -> dict[str, str]:
                   </CardHeader>
                   <CardContent className="grid gap-4">
                     {meta.filters.length ? (
-                      <form className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 rounded-lg bg-slate-50 p-4" onSubmit={handleSearch}>
+                      <form
+                        key={filterFormKey}
+                        className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 rounded-lg bg-slate-50 p-4"
+                        onSubmit={handleSearch}
+                      >
                         {meta.filters.map((filter) => (
                           <div className="grid gap-1" key={filter.name}>
                             <label className="text-xs font-medium text-slate-500">
@@ -1805,13 +1816,13 @@ def render_resource_components() -> dict[str, str]:
                             )}
                           </div>
                         ))}
-                        <div className="flex items-end gap-2">
+                        <div className="col-span-full flex flex-wrap items-end gap-2 pt-1">
                           <Button type="submit">查询</Button>
                           <Button
                             type="button"
                             variant="outline"
                             onClick={() => {
-                              setParams({ [pageKey]: 1, [pageSizeKey]: currentPageSize });
+                              resetParams();
                             }}
                           >
                             重置
