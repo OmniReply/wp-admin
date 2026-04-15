@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 
 export const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/admin-api',
   timeout: 20000,
   // If backend uses cookies (session / SSO), make proxy + browser keep them.
   withCredentials: true,
