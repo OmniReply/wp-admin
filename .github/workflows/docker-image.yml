@@ -1,0 +1,153 @@
+name: Build and publish Docker image (UTC+8 auto deploy)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ─── Detect package manager ────────────────────────────────────────────────
+      - name: Detect package manager
+        id: pm
+        shell: bash
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            echo "PM=pnpm" >> $GITHUB_OUTPUT
+          elif [ -f yarn.lock ]; then
+            echo "PM=yarn" >> $GITHUB_OUTPUT
+          elif [ -f package-lock.json ] || [ -f package.json ]; then
+            echo "PM=npm" >> $GITHUB_OUTPUT
+          else
+            echo "PM=none" >> $GITHUB_OUTPUT
+          fi
+
+      # ─── Setup Node (pnpm: 不启用缓存；npm/yarn: 启用缓存) ─────────────────────
+      - name: Setup Node for pnpm (no cache)
+        if: steps.pm.outputs.PM == 'pnpm'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Node for npm/yarn (with cache)
+        if: steps.pm.outputs.PM == 'npm' || steps.pm.outputs.PM == 'yarn'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: ${{ steps.pm.outputs.PM }}
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            **/pnpm-lock.yaml
+            yarn.lock
+            **/yarn.lock
+            package-lock.json
+
+      # ─── Setup pnpm & cache store ─────────────────────────────────────────────
+      - name: Setup pnpm
+        if: steps.pm.outputs.PM == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          # 若 package.json 里有 "packageManager": "pnpm@x.y.z" 可省略 version
+          version: 9
+          run_install: false
+
+      - name: Cache pnpm store
+        if: steps.pm.outputs.PM == 'pnpm'
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      # ─── Install deps ────────────────────────────────────────────────────────
+      - name: Install deps
+        if: steps.pm.outputs.PM != 'none'
+        shell: bash
+        run: |
+          if [ "${{ steps.pm.outputs.PM }}" = "pnpm" ]; then pnpm install --frozen-lockfile; fi
+          if [ "${{ steps.pm.outputs.PM }}" = "yarn" ]; then yarn --frozen-lockfile; fi
+          if [ "${{ steps.pm.outputs.PM }}" = "npm" ]; then npm ci || npm i; fi
+
+      # ─── Build (Vite/SPA) ────────────────────────────────────────────────────
+      - name: Build (Vite/SPA)
+        if: steps.pm.outputs.PM != 'none'
+        shell: bash
+        run: |
+          export VITE_BASE_URL=${VITE_BASE_URL:-/}
+          if [ "${{ steps.pm.outputs.PM }}" = "pnpm" ]; then pnpm run build; fi
+          if [ "${{ steps.pm.outputs.PM }}" = "yarn" ]; then yarn build; fi
+          if [ "${{ steps.pm.outputs.PM }}" = "npm" ]; then npm run build; fi
+
+      # ─── Docker buildx / login / push ────────────────────────────────────────
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate tags (UTC+8)
+        id: meta
+        run: |
+          # GHCR/Docker repository name must be lowercase (owner/repo).
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}
+          SHORT_SHA=${GITHUB_SHA::7}
+          DATE_TAG=$(date -d '+8 hour' +'%Y%m%d-%H%M%S')
+          BUILD_TIME=$(date -d '+8 hour' +'%Y-%m-%d %H:%M:%S')
+          echo "IMAGE=$IMAGE" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "DATE_TAG=$DATE_TAG" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=$BUILD_TIME" >> $GITHUB_OUTPUT
+          echo "TAGS=$IMAGE:sha-${SHORT_SHA},$IMAGE:date-${DATE_TAG},$IMAGE:main" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          # build-args: |
+          #   VITE_BASE_URL=/
+          tags: ${{ steps.meta.outputs.TAGS }}
+
+      - name: Log info
+        run: |
+          echo "🕓 Build Time (UTC+8): ${{ steps.meta.outputs.BUILD_TIME }}"
+          echo "✅ ${{ steps.meta.outputs.IMAGE }}:sha-${{ steps.meta.outputs.SHORT_SHA }}"
+          echo "✅ ${{ steps.meta.outputs.IMAGE }}:date-${{ steps.meta.outputs.DATE_TAG }}"
+          echo "✅ ${{ steps.meta.outputs.IMAGE }}:main"
+
+      - name: Trigger Dokploy deploy via API
+        if: success()
+        env:
+          DOKPLOY_API_URL: https://dokploy-uk01.4ree.com/api/application.deploy
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APP_ID: ${{ vars.DOKPLOY_APP_ID }}
+        run: |
+          echo "🚀 Triggering Dokploy deployment via API..."
+          curl -sS -X POST "$DOKPLOY_API_URL" \
+            -H "accept: application/json" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -d "{\"applicationId\": \"$DOKPLOY_APP_ID\"}"
+          echo "✅ Dokploy API called"
