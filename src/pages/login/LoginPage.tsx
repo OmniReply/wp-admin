@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 import { authApi } from '@/api/auth';
 import { unwrapApiData } from '@/types/common';
 import { Button } from '@/components/ui/button';
@@ -13,8 +14,9 @@ import { useAuthStore } from '@/stores/authStore';
 export default function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
-  const [form, setForm] = useState({ username: 'admin', password: 'admin123456' });
+  const [form, setForm] = useState({ username: import.meta.env.DEV ? 'superadmin' : "", password:  import.meta.env.DEV ? 'Admin@2024' : "" });
   const [loading, setLoading] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
@@ -52,7 +54,7 @@ export default function LoginPage() {
           <CardHeader className="border-white/8">
             <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--text-soft)]">Sign In</p>
             <CardTitle className="mt-3 text-2xl">后台登录</CardTitle>
-            <p className="mt-3 text-sm leading-7 text-[var(--text-muted)]">输入管理员账号后进入控制台。当前环境已接通真实后端接口。</p>
+            <p className="mt-3 text-sm leading-7 text-[var(--text-muted)]">请输入管理员账号与密码，登录进入控制台。</p>
           </CardHeader>
           <CardContent className="pt-1">
           <form
@@ -99,15 +101,26 @@ export default function LoginPage() {
             </div>
             <div className="grid gap-2">
               <label className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--text-soft)]">密码</label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(event) => setForm((state) => ({ ...state, password: event.target.value }))}
-              />
+              <div className="relative">
+                <Input
+                  className="pr-12"
+                  type={passwordVisible ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(event) => setForm((state) => ({ ...state, password: event.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--text-soft)] transition hover:bg-white/10 hover:text-[var(--text-main)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                  aria-label={passwordVisible ? '隐藏密码' : '显示密码'}
+                  onClick={() => setPasswordVisible((v) => !v)}
+                >
+                  {passwordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
-            <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4 text-sm leading-7 text-[var(--text-muted)]">
+            {/* <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4 text-sm leading-7 text-[var(--text-muted)]">
               登录后会自动拉取当前管理员信息，并将鉴权状态持久化到本地。
-            </div>
+            </div> */}
             <Button className="w-full" disabled={loading} type="submit">
               {loading ? '登录中...' : '登录'}
             </Button>

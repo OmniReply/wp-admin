@@ -1,8 +1,22 @@
 
 import { useEffect, useState } from 'react';
+import {
+  Area,
+  AreaChart as RechartsAreaChart,
+  Bar,
+  BarChart as RechartsBarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { dashboardApi } from '@/api/dashboard';
 import { unwrapApiData, formatValue } from '@/types/common';
+import type { ApiResponse } from '@/types/common';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { DashboardStatsResponse } from '@/types/openapi';
 
 type TrendPoint = {
   label: string;
@@ -10,10 +24,19 @@ type TrendPoint = {
   secondary?: number;
 };
 
+const DASHBOARD_LABEL_MAP: Record<string, string> = {
+  totalUsers: '用户总数',
+  todayNewUsers: '今日新增用户',
+  totalTeams: '团队总数',
+  activeMemberships: '活跃会员数',
+  todayOrders: '今日订单数',
+  todayRevenue: '今日营收',
+  monthRevenue: '本月营收',
+  totalRevenue: '总营收',
+};
+
 function labelize(value: string) {
-  return value
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/^./, (letter) => letter.toUpperCase());
+  return DASHBOARD_LABEL_MAP[value] ?? value;
 }
 
 function toNumber(value: unknown) {
@@ -21,25 +44,8 @@ function toNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function buildLinePath(points: number[], width: number, height: number) {
-  const max = Math.max(...points, 1);
-  const step = points.length > 1 ? width / (points.length - 1) : width;
-  return points
-    .map((point, index) => {
-      const x = index * step;
-      const y = height - (point / max) * height;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(' ');
-}
-
 function AreaChart({ title, points, accent = '#f0a94f' }: { title: string; points: TrendPoint[]; accent?: string }) {
-  const width = 520;
-  const height = 180;
-  const values = points.map((item) => item.value);
-  const path = buildLinePath(values, width, height);
-  const max = Math.max(...values, 1);
-  const areaPath = `${path} L ${width} ${height} L 0 ${height} Z`;
+  const gradientId = `area-${title.toLowerCase().replace(/\s+/g, '-')}`;
 
   return (
     <Card className="overflow-hidden">
@@ -49,32 +55,45 @@ function AreaChart({ title, points, accent = '#f0a94f' }: { title: string; point
       </CardHeader>
       <CardContent>
         <div className="rounded-[28px] border border-white/8 bg-black/15 p-4">
-          <svg className="h-56 w-full" viewBox={`0 0 ${width} ${height + 36}`} preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={`area-${title}`} x1="0%" x2="0%" y1="0%" y2="100%">
-                <stop offset="0%" stopColor={accent} stopOpacity="0.36" />
-                <stop offset="100%" stopColor={accent} stopOpacity="0.02" />
-              </linearGradient>
-            </defs>
-            {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-              const y = height - height * ratio;
-              return <line key={ratio} x1="0" x2={width} y1={y} y2={y} stroke="rgba(255,255,255,0.08)" strokeDasharray="5 8" />;
-            })}
-            <path d={areaPath} fill={`url(#area-${title})`} />
-            <path d={path} fill="none" stroke={accent} strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-            {points.map((point, index) => {
-              const x = points.length > 1 ? (width / (points.length - 1)) * index : width / 2;
-              const y = height - (point.value / max) * height;
-              return (
-                <g key={point.label}>
-                  <circle cx={x} cy={y} fill="#0b1020" r="6" stroke={accent} strokeWidth="3" />
-                  <text fill="rgba(246,239,228,0.55)" fontSize="11" textAnchor="middle" x={x} y={height + 24}>
-                    {point.label}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsAreaChart data={points} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor={accent} stopOpacity={0.34} />
+                    <stop offset="100%" stopColor={accent} stopOpacity={0.03} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="5 8" vertical={false} />
+                <XAxis axisLine={false} dataKey="label" tick={{ fill: 'rgba(246,239,228,0.55)', fontSize: 11 }} tickLine={false} />
+                <YAxis
+                  axisLine={false}
+                  tick={{ fill: 'rgba(246,239,228,0.45)', fontSize: 11 }}
+                  tickLine={false}
+                  width={36}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(10, 16, 28, 0.96)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '18px',
+                    color: '#f6efe4',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.28)',
+                  }}
+                  cursor={{ stroke: accent, strokeDasharray: '4 6', strokeOpacity: 0.45 }}
+                  labelStyle={{ color: 'rgba(246,239,228,0.6)', fontSize: 12, marginBottom: 6 }}
+                />
+                <Area
+                  activeDot={{ fill: accent, r: 5, stroke: '#0b1020', strokeWidth: 2 }}
+                  dataKey="value"
+                  fill={`url(#${gradientId})`}
+                  stroke={accent}
+                  strokeWidth={3}
+                  type="monotone"
+                />
+              </RechartsAreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -82,7 +101,6 @@ function AreaChart({ title, points, accent = '#f0a94f' }: { title: string; point
 }
 
 function BarChart({ title, points }: { title: string; points: TrendPoint[] }) {
-  const max = Math.max(...points.map((item) => Math.max(item.value, item.secondary ?? 0)), 1);
   return (
     <Card className="overflow-hidden">
       <CardHeader>
@@ -90,26 +108,37 @@ function BarChart({ title, points }: { title: string; points: TrendPoint[] }) {
         <p className="mt-2 text-sm leading-7 text-[var(--text-muted)]">订单构成以并列柱状方式展示，便于比较不同来源。</p>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 rounded-[28px] border border-white/8 bg-black/15 p-5">
-          {points.map((point) => (
-            <div className="grid gap-2" key={point.label}>
-              <div className="flex items-center justify-between text-xs text-[var(--text-soft)]">
-                <span>{point.label}</span>
-                <span>{point.value} / {point.secondary ?? 0}</span>
-              </div>
-              <div className="grid grid-cols-[1fr_1fr] gap-2">
-                <div className="h-3 overflow-hidden rounded-full bg-white/8">
-                  <div className="h-full rounded-full bg-[linear-gradient(90deg,#f0a94f,#ffcf86)]" style={{ width: `${(point.value / max) * 100}%` }} />
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-white/8">
-                  <div className="h-full rounded-full bg-[linear-gradient(90deg,#8b7bff,#c1b8ff)]" style={{ width: `${((point.secondary ?? 0) / max) * 100}%` }} />
-                </div>
-              </div>
-            </div>
-          ))}
-          <div className="flex gap-5 pt-2 text-xs text-[var(--text-muted)]">
-            <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-amber-300" />会员订单</span>
-            <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-violet-300" />充值订单</span>
+        <div className="rounded-[28px] border border-white/8 bg-black/15 p-5">
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsBarChart data={points} barGap={10} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="5 8" vertical={false} />
+                <XAxis axisLine={false} dataKey="label" tick={{ fill: 'rgba(246,239,228,0.55)', fontSize: 11 }} tickLine={false} />
+                <YAxis
+                  axisLine={false}
+                  tick={{ fill: 'rgba(246,239,228,0.45)', fontSize: 11 }}
+                  tickLine={false}
+                  width={36}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(10, 16, 28, 0.96)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '18px',
+                    color: '#f6efe4',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.28)',
+                  }}
+                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                  labelStyle={{ color: 'rgba(246,239,228,0.6)', fontSize: 12, marginBottom: 6 }}
+                />
+                <Legend
+                  formatter={(value: string) => <span style={{ color: 'rgba(246,239,228,0.68)', fontSize: 12 }}>{value}</span>}
+                  wrapperStyle={{ paddingTop: 14 }}
+                />
+                <Bar dataKey="value" fill="#f0a94f" name="会员订单" radius={[10, 10, 4, 4]} />
+                <Bar dataKey="secondary" fill="#9d8cff" name="充值订单" radius={[10, 10, 4, 4]} />
+              </RechartsBarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </CardContent>
@@ -121,7 +150,7 @@ export default function StatsOverview() {
   const [data, setData] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    dashboardApi.stats().then((response) => {
+    dashboardApi.stats().then((response: { data: ApiResponse<DashboardStatsResponse> }) => {
       setData(unwrapApiData(response.data) as unknown as Record<string, unknown>);
     });
   }, []);
@@ -152,7 +181,7 @@ export default function StatsOverview() {
           <Card key={key} className="relative overflow-hidden">
             <div className="pointer-events-none absolute right-0 top-0 h-28 w-28 translate-x-8 -translate-y-8 rounded-full bg-amber-300/10 blur-2xl" />
             <CardHeader className="border-none pb-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--text-soft)]">Metric {String(index + 1).padStart(2, '0')}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--text-soft)]">指标 {String(index + 1).padStart(2, '0')}</p>
               <CardTitle className="mt-3 text-lg">{labelize(key)}</CardTitle>
             </CardHeader>
             <CardContent>
@@ -163,12 +192,12 @@ export default function StatsOverview() {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
-        {userTrendPoints.length ? <AreaChart points={userTrendPoints} title="User Trend" /> : null}
-        {membershipPoints.length ? <AreaChart accent="#9d8cff" points={membershipPoints} title="Membership Distribution" /> : null}
+        {userTrendPoints.length ? <AreaChart points={userTrendPoints} title="用户增长趋势" /> : null}
+        {membershipPoints.length ? <AreaChart accent="#9d8cff" points={membershipPoints} title="会员分布" /> : null}
       </section>
 
       <section className="grid gap-4">
-        {orderTrendPoints.length ? <BarChart points={orderTrendPoints} title="Order Trend" /> : null}
+        {orderTrendPoints.length ? <BarChart points={orderTrendPoints} title="订单趋势" /> : null}
       </section>
     </div>
   );
